@@ -1,0 +1,5 @@
+gitdb2==2.0.0
+GitPython==2.1.0
+smmap2==2.0.1
+wheel==0.24.0
+
