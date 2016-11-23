@@ -1,7 +1,8 @@
 import logging
+import re
+import os
 
 from git import Repo, Git
-import re
 
 FORMAT = '%(message)s'
 logging.basicConfig(format=FORMAT)
@@ -46,7 +47,6 @@ class TakeMe(object):
             # 5. go to the next release branch, or develop
             last_branch = self.get_current_branch()
 
-
     def get_current_branch(self):
         logger.debug("current branch is '%s'", self.repo.active_branch)
         return self.repo.active_branch
@@ -83,17 +83,10 @@ class TakeMe(object):
         return True if match else False
 
 
-def test(tm):
-    assert not tm._is_release('kakiel')
-    assert not tm._is_release('release-2.41.0_h1')
-    assert tm._is_release('release-2.41.0')
-    assert ('2', '47') == tm._get_major_minor('release-2.47.0')
-
-
 def main():
-    tm = TakeMe("/Users/adam/repos/test/")
-    # test(tm)
+    tm = TakeMe(os.getcwd())
     tm.main()
+
 
 if __name__ == "__main__":
     main()
