@@ -64,14 +64,8 @@ class TakeMe(object):
                     logger.info('verifying that %s is available locally', ref.remote_head)
                     # fetches and tracks the release branch
                     self.git.checkout(ref.name)
-        except:
-            raise
         finally:
-            try:
-                original_head.checkout()
-            except:
-                pass
-                raise
+            original_head.checkout()
 
     def get_targets(self, branches, skip_develop=False):
         major, minor = self._get_major_minor(self.initial_branch.name)
