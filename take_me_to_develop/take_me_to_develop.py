@@ -52,7 +52,8 @@ class TakeMe(object):
         return self.repo.active_branch
 
     def get_targets(self):
-        assert self._is_release(self.initial_branch.name)
+        if not self._is_release(self.initial_branch.name):
+            raise Exception("So weird, not on a release branch")
         major, minor = self._get_major_minor(self.initial_branch.name)
         # filter all release branches that are later than ours
         targets = []
