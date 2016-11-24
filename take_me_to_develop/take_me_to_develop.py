@@ -12,19 +12,23 @@ logger.setLevel(logging.INFO)
 
 class TakeMe(object):
     def __init__(self, repo_path):
-        self.release_pattern = re.compile("^release-(\d+)\.(\d+)\.0$")
+        self.release_pattern = re.compile(r"^release-(\d+)\.(\d+)\.0$")
         self.repo = Repo(path=repo_path)
         self.git = Git(repo_path)
         self.initial_branch = self.get_current_branch()
-        self.remote = self.repo.remotes[0]
-        if self.remote.name != 'origin':
-            logger.warn('remote is: %s', self.remote.name)
+        self.remote = self.repo.remote()
+        self.targets = []
 
     def main(self):
+        if not self._is_release(self.initial_branch.name):
+            raise Exception("So weird, not on a release branch")
+
+        self.fetch_missing_release_branches()
+
         # 0. figure out the list of branches to merge to
-        self.get_targets()
+        targets = self.get_targets(self.repo.heads)
         last_branch = self.initial_branch
-        for target_branch in self.targets:
+        for target_branch in targets:
             # 1. check out the next branch
             logger.info('checking out {}'.format(target_branch.name))
             target_branch.checkout()
@@ -51,24 +55,42 @@ class TakeMe(object):
         logger.debug("current branch is '%s'", self.repo.active_branch)
         return self.repo.active_branch
 
-    def get_targets(self):
-        if not self._is_release(self.initial_branch.name):
-            raise Exception("So weird, not on a release branch")
+    def fetch_missing_release_branches(self):
+        original_head = self.get_current_branch()
+        try:
+            targets = self.get_targets(self.remote.refs, skip_develop=True)
+            for ref in targets:
+                if self._is_release(ref.remote_head):
+                    logger.info('verifying that %s is available locally', ref.remote_head)
+                    # fetches and tracks the release branch
+                    self.git.checkout(ref.name)
+        except:
+            raise
+        finally:
+            try:
+                original_head.checkout()
+            except:
+                pass
+                raise
+
+    def get_targets(self, branches, skip_develop=False):
         major, minor = self._get_major_minor(self.initial_branch.name)
         # filter all release branches that are later than ours
         targets = []
-        for branch0 in self.repo.branches:
-            if self._is_release(branch0.name):
-                major0, minor0 = self._get_major_minor(branch0.name)
+        for branch0 in branches:
+            name = re.sub(r"^.*/", "", branch0.name)
+            if self._is_release(name):
+                major0, minor0 = self._get_major_minor(name)
                 if major0 >= major and minor < minor0:
                     targets.append(branch0)
 
         try:
-            targets.append(self.repo.branches.develop)
+            if not skip_develop:
+                targets.append(self.repo.branches.develop)
         except:
             raise Exception("So weird, where is develop branch")
         logger.debug(targets)
-        self.targets = targets
+        return targets
 
     def _get_major_minor(self, branch_name):
         assert self._is_release(branch_name)
