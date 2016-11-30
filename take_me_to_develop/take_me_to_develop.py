@@ -7,7 +7,7 @@ from git import Repo, Git
 FORMAT = '%(message)s'
 logging.basicConfig(format=FORMAT)
 logger = logging.getLogger('take')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 class TakeMe(object):
@@ -26,7 +26,7 @@ class TakeMe(object):
         self.fetch_missing_release_branches()
 
         # 0. figure out the list of branches to merge to
-        targets = self.get_targets(self.repo.heads)
+        targets = self.get_targets(self.repo.refs)
         last_branch = self.initial_branch
         for target_branch in targets:
             # 1. check out the next branch
@@ -40,9 +40,6 @@ class TakeMe(object):
             # 3. merge current branch
             logger.info('merging {}'.format(last_branch))
             self.git.merge(last_branch.name)
-
-            # 3.f. if there's a conflict, stop the whole thing and show message to the user
-            """ So weird, where is the error handling? """
 
             # 4. push to origin
             logger.info('pushing {}'.format(self.get_current_branch()))
@@ -58,16 +55,17 @@ class TakeMe(object):
     def fetch_missing_release_branches(self):
         original_head = self.get_current_branch()
         try:
-            targets = self.get_targets(self.remote.refs, skip_develop=True)
+            targets = self.get_targets(self.remote.refs, skip_develop=True, filter_origin=False)
             for ref in targets:
                 if self._is_release(ref.remote_head):
                     logger.info('verifying that %s is available locally', ref.remote_head)
                     # fetches and tracks the release branch
-                    self.git.checkout(ref.name)
+                    self.git.checkout(ref.remote_head)
         finally:
+            logger.info('checking out original branch again: {}'.format(original_head.name))
             original_head.checkout()
 
-    def get_targets(self, branches, skip_develop=False):
+    def get_targets(self, branches, skip_develop=False, filter_origin=True):
         major, minor = self._get_major_minor(self.initial_branch.name)
         # filter all release branches that are later than ours
         targets = []
@@ -76,7 +74,8 @@ class TakeMe(object):
             if self._is_release(name):
                 major0, minor0 = self._get_major_minor(name)
                 if major0 >= major and minor < minor0:
-                    targets.append(branch0)
+                    if not (filter_origin and self.remote.name in branch0.name):
+                        targets.append(branch0)
 
         try:
             if not skip_develop:
@@ -101,8 +100,7 @@ class TakeMe(object):
 
 
 def main():
-    tm = TakeMe(os.getcwd())
-    tm.main()
+    TakeMe(os.getcwd()).main()
 
 
 if __name__ == "__main__":

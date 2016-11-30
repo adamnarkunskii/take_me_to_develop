@@ -12,6 +12,7 @@ setup(name='take_me_to_develop',
                         'GitPython==2.1.0',
                         'smmap2==2.0.1',
                         'wheel==0.24.0', ],
+      test_requires=['pytest'],
       entry_points={
           'console_scripts': ['take-me-to-develop=take_me_to_develop.take_me_to_develop:main'],
       },
