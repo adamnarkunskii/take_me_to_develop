@@ -7,7 +7,7 @@ from git import Repo, Git
 FORMAT = '%(message)s'
 logging.basicConfig(format=FORMAT)
 logger = logging.getLogger('take')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 class TakeMe(object):
